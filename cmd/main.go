@@ -20,5 +20,9 @@ func main() {
 	}
 
 	a := app.NewApp()
-	a.Run(*cfg)
+	err = a.Run(*cfg)
+	if err != nil {
+		log.Fatalf("Error run app: %v", err)
+		return
+	}
 }

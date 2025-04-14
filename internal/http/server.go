@@ -4,6 +4,7 @@ import (
 	"context"
 	"data-provider-service/internal/config"
 	"errors"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"time"
@@ -12,14 +13,14 @@ import (
 type Server struct {
 	Config config.HTTPConfig
 	Server *http.Server
-	Mux    *http.ServeMux
+	Router *mux.Router
 }
 
 func NewServer(cfg config.HTTPConfig) *Server {
 	return &Server{
 		Config: cfg,
 		Server: nil,
-		Mux:    http.NewServeMux(),
+		Router: mux.NewRouter(),
 	}
 }
 
@@ -27,7 +28,7 @@ func (s *Server) Run() {
 	log.Printf("running http server on %v ...\n", s.Config.Addr)
 	s.Server = &http.Server{
 		Addr:    s.Config.Addr,
-		Handler: s.Mux,
+		Handler: s.Router,
 	}
 
 	if err := s.Server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
