@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.23.8
 
 require (
-	github.com/5krotov/task-resolver-pkg v1.0.0
+	github.com/5krotov/task-resolver-pkg v1.0.2
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.4.0

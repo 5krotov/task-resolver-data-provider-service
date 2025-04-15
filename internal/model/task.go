@@ -8,4 +8,5 @@ type Task struct {
 	Difficulty int       `db:"difficulty"`
 	Status     int       `db:"status"`
 	LastUpdate time.Time `db:"last_update"`
+	CreatedAt  time.Time `db:"created_at"`
 }

@@ -3,12 +3,14 @@ package postgres
 import (
 	"context"
 	"data-provider-service/internal/config"
+	"data-provider-service/internal/entity"
 	"data-provider-service/internal/model"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"log"
 	"os"
 	"time"
 
@@ -95,6 +97,54 @@ func (r *Repository) Close() error {
 	return r.db.Close()
 }
 
+func (r *Repository) CountTask(ctx context.Context) (int64, error) {
+	query := `
+		SELECT COUNT(*) 
+		FROM tasks
+	`
+
+	var count int64
+	err := r.db.Get(&count, query) // Используем db.Get() из sqlx
+	if err != nil {
+		return 0, fmt.Errorf("count tasks failed: %v", err)
+	}
+
+	return count, nil
+}
+
+func (r *Repository) SearchTask(ctx context.Context, params *entity.SearchTaskParams) ([]model.Task, [][]model.Status, error) {
+	query := `
+		SELECT *
+		FROM tasks
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	limit := params.PerPage
+	offset := params.PerPage * params.Page
+
+	var tasks []model.Task
+	err := sqlx.SelectContext(ctx, r.db, &tasks, query, limit, offset)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Println("no tasks")
+			return []model.Task{}, [][]model.Status{}, nil
+		}
+		return nil, nil, fmt.Errorf("failed to get tasks: %v", err)
+	}
+
+	statuses := make([][]model.Status, len(tasks))
+
+	for ind, task := range tasks {
+		taskStatuses, err := r.GetStatusesByTaskID(ctx, task.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get statuses for task with id '%v': %v", task.ID, err)
+		}
+		statuses[ind] = taskStatuses
+	}
+
+	return tasks, statuses, nil
+}
+
 func (r *Repository) CreateTask(ctx context.Context, task model.Task) (*model.Task, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -103,13 +153,13 @@ func (r *Repository) CreateTask(ctx context.Context, task model.Task) (*model.Ta
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO tasks (name, difficulty, status, last_update)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO tasks (name, difficulty, status, last_update, created_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING *
 	`
 
 	var createdTask model.Task
-	err = tx.GetContext(ctx, &createdTask, query, task.Name, task.Difficulty, task.Status, task.LastUpdate)
+	err = tx.GetContext(ctx, &createdTask, query, task.Name, task.Difficulty, task.Status, task.LastUpdate, task.LastUpdate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task: %v", err)
 	}

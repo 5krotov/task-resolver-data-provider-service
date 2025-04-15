@@ -2,6 +2,7 @@ package service
 
 import (
 	"data-provider-service/internal/cache"
+	"data-provider-service/internal/entity"
 	"data-provider-service/internal/provider"
 	"fmt"
 	api "github.com/5krotov/task-resolver-pkg/api/v1"
@@ -15,6 +16,10 @@ type DataProviderService struct {
 
 func NewDataProviderService(cache *cache.Cache, provider *provider.Provider) *DataProviderService {
 	return &DataProviderService{cache: cache, provider: provider}
+}
+
+func (s *DataProviderService) SearchTask(request *entity.SearchTaskParams) (*api.SearchTaskResponse, error) {
+	return s.provider.SearchTask(request)
 }
 
 func (s *DataProviderService) CreateTask(request *api.CreateTaskRequest) (*api.CreateTaskResponse, error) {
