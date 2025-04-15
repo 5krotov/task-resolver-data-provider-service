@@ -77,7 +77,7 @@ func (h *DataProviderHandler) HandleCreateTask(w http.ResponseWriter, r *http.Re
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write(jsonData)
 
 }
