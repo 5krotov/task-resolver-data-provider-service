@@ -28,6 +28,9 @@ func (p *Provider) SearchTask(params *entity.SearchTaskParams) (*api.SearchTaskR
 		return nil, fmt.Errorf("count tasks failed: %v", err)
 	}
 	countPages := count / int64(params.PerPage)
+	if count%int64(params.PerPage) != 0 {
+		countPages++
+	}
 	var countPagesInt int
 	if countPages > int64(math.MaxInt) {
 		countPagesInt = math.MaxInt
