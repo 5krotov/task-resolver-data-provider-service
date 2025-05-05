@@ -8,13 +8,18 @@ import (
 )
 
 type Config struct {
-	HTTPConfig     HTTPConfig     `yaml:"http" validate:"required"`
+	GRPCConfig     GRPCConfig     `yaml:"grpc" validate:"required"`
 	RedisConfig    RedisConfig    `yaml:"redis" validate:"required"`
 	PostgresConfig PostgresConfig `yaml:"postgres" validate:"required"`
 }
 
-type HTTPConfig struct {
-	Addr string `yaml:"addr" validate:"required"`
+type GRPCConfig struct {
+	Network string `yaml:"network" validate:"required"`
+	Addr    string `yaml:"addr" validate:"required"`
+	UseTLS  bool   `yaml:"useTLS" validate:"required"`
+	Cert    string `yaml:"cert" validate:"required"`
+	Key     string `yaml:"key" validate:"required"`
+	CA      string `yaml:"ca" validate:"required"`
 }
 
 type RedisConfig struct {

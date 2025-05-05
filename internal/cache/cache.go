@@ -5,7 +5,7 @@ import (
 	repository "data-provider-service/internal/cache/repository"
 	"encoding/json"
 	"fmt"
-	api "github.com/5krotov/task-resolver-pkg/api/v1"
+	pb "github.com/5krotov/task-resolver-pkg/grpc-api/v1"
 )
 
 type Cache struct {
@@ -24,7 +24,7 @@ func (c *Cache) Cache(request interface{}, response interface{}) error {
 	return nil
 }
 
-func (c *Cache) LoadGetTaskResponse(taskId int64) (*api.GetTaskResponse, error) {
+func (c *Cache) LoadGetTaskResponse(taskId int64) (*pb.GetTaskResponse, error) {
 	responseBytes, err := c.repository.Load(context.Background(), taskId)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (c *Cache) LoadGetTaskResponse(taskId int64) (*api.GetTaskResponse, error) 
 		return nil, nil
 	}
 
-	var response api.GetTaskResponse
+	var response pb.GetTaskResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, fmt.Errorf("json decode error: %w", err)
 	}

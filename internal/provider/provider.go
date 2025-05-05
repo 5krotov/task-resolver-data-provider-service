@@ -3,12 +3,11 @@ package provider
 import (
 	"context"
 	"data-provider-service/internal/entity"
+	"data-provider-service/internal/mapper"
 	"data-provider-service/internal/model"
 	repository "data-provider-service/internal/provider/repository"
-	"data-provider-service/mapper"
 	"fmt"
-	api "github.com/5krotov/task-resolver-pkg/api/v1"
-	v1 "github.com/5krotov/task-resolver-pkg/entity/v1"
+	pb "github.com/5krotov/task-resolver-pkg/grpc-api/v1"
 	"math"
 	"time"
 )
@@ -22,7 +21,7 @@ func NewProvider(repository repository.ProviderRepository) *Provider {
 	return &Provider{repository: repository, mapper: &mapper.Mapper{}}
 }
 
-func (p *Provider) SearchTask(params *entity.SearchTaskParams) (*api.SearchTaskResponse, error) {
+func (p *Provider) SearchTask(params *pb.SearchTaskRequest) (*pb.SearchTaskResponse, error) {
 	count, err := p.repository.CountTask(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("count tasks failed: %v", err)
@@ -37,25 +36,25 @@ func (p *Provider) SearchTask(params *entity.SearchTaskParams) (*api.SearchTaskR
 	} else {
 		countPagesInt = int(countPages)
 	}
-	foundTasks, foundTasksStatuses, err := p.repository.SearchTask(context.Background(), params)
+	foundTasks, foundTasksStatuses, err := p.repository.SearchTask(context.Background(), &entity.SearchTaskParams{int(params.PerPage), int(params.Page)})
 	if err != nil {
 		return nil, fmt.Errorf("finding tasks failed: %v", err)
 	}
 
-	apiTasks := make([]v1.Task, len(foundTasks))
+	apiTasks := make([]*pb.Task, len(foundTasks))
 
 	for ind, task := range foundTasks {
 		apiTask := p.mapper.TaskAndStatusesToAPITask(task, foundTasksStatuses[ind])
-		apiTasks[ind] = apiTask
+		apiTasks[ind] = &apiTask
 	}
 
-	return &api.SearchTaskResponse{Pages: countPagesInt, Tasks: apiTasks}, nil
+	return &pb.SearchTaskResponse{Pages: int64(countPagesInt), Tasks: apiTasks}, nil
 }
 
-func (p *Provider) CreateTask(request *api.CreateTaskRequest) (*api.CreateTaskResponse, error) {
+func (p *Provider) CreateTask(request *pb.CreateTaskRequest) (*pb.CreateTaskResponse, error) {
 	task := model.Task{
 		Name:       request.Name,
-		Difficulty: request.Difficulty,
+		Difficulty: int(request.Difficulty),
 		Status:     0,
 		LastUpdate: time.Now(),
 	}
@@ -65,10 +64,10 @@ func (p *Provider) CreateTask(request *api.CreateTaskRequest) (*api.CreateTaskRe
 	}
 	apiTask := p.mapper.TaskAndStatusesToAPITask(*createdTask, []model.Status{{Status: task.Status, Timestamp: task.LastUpdate}})
 
-	return &api.CreateTaskResponse{Task: apiTask}, nil
+	return &pb.CreateTaskResponse{Task: &apiTask}, nil
 }
 
-func (p *Provider) GetTask(taskId int64) (*api.GetTaskResponse, error) {
+func (p *Provider) GetTask(taskId int64) (*pb.GetTaskResponse, error) {
 	task, err := p.repository.GetTaskByID(context.Background(), taskId)
 	if err != nil {
 		return nil, fmt.Errorf("get task failed: %v", err)
@@ -79,11 +78,11 @@ func (p *Provider) GetTask(taskId int64) (*api.GetTaskResponse, error) {
 	}
 	apiTask := p.mapper.TaskAndStatusesToAPITask(*task, statuses)
 
-	return &api.GetTaskResponse{Task: apiTask}, nil
+	return &pb.GetTaskResponse{Task: &apiTask}, nil
 }
 
-func (p *Provider) UpdateTaskStatus(request *api.UpdateStatusRequest) error {
-	status := model.Status{Status: request.Status.Status, Timestamp: request.Status.Timestamp, TaskID: request.Id}
+func (p *Provider) UpdateTaskStatus(request *pb.UpdateStatusRequest) error {
+	status := model.Status{Status: int(request.Status.Status), Timestamp: request.Status.Timestamp.AsTime(), TaskID: request.Id}
 
 	err := p.repository.UpdateTaskStatus(context.Background(), status)
 	if err != nil {

@@ -2,10 +2,10 @@ package service
 
 import (
 	"data-provider-service/internal/cache"
-	"data-provider-service/internal/entity"
 	"data-provider-service/internal/provider"
 	"fmt"
-	api "github.com/5krotov/task-resolver-pkg/api/v1"
+	pb "github.com/5krotov/task-resolver-pkg/grpc-api/v1"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 )
 
@@ -18,16 +18,16 @@ func NewDataProviderService(cache *cache.Cache, provider *provider.Provider) *Da
 	return &DataProviderService{cache: cache, provider: provider}
 }
 
-func (s *DataProviderService) SearchTask(request *entity.SearchTaskParams) (*api.SearchTaskResponse, error) {
+func (s *DataProviderService) SearchTask(request *pb.SearchTaskRequest) (*pb.SearchTaskResponse, error) {
 	return s.provider.SearchTask(request)
 }
 
-func (s *DataProviderService) CreateTask(request *api.CreateTaskRequest) (*api.CreateTaskResponse, error) {
+func (s *DataProviderService) CreateTask(request *pb.CreateTaskRequest) (*pb.CreateTaskResponse, error) {
 	return s.provider.CreateTask(request)
 }
 
-func (s *DataProviderService) GetTask(taskId int64) (*api.GetTaskResponse, error) {
-	response, err := s.cache.LoadGetTaskResponse(taskId)
+func (s *DataProviderService) GetTask(request *pb.GetTaskRequest) (*pb.GetTaskResponse, error) {
+	response, err := s.cache.LoadGetTaskResponse(request.GetId())
 	if err == nil && response != nil {
 		log.Println("record getted from cache")
 		return response, nil
@@ -38,12 +38,12 @@ func (s *DataProviderService) GetTask(taskId int64) (*api.GetTaskResponse, error
 		log.Println("no record in cache")
 	}
 
-	response, err = s.provider.GetTask(taskId)
+	response, err = s.provider.GetTask(request.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("get task from provider failed: %v", err)
 	}
 
-	err = s.cache.Cache(taskId, response)
+	err = s.cache.Cache(request.GetId(), response)
 	if err != nil {
 		log.Printf("cache record failed: %v \n", err)
 	}
@@ -51,6 +51,6 @@ func (s *DataProviderService) GetTask(taskId int64) (*api.GetTaskResponse, error
 	return response, nil
 }
 
-func (s *DataProviderService) UpdateStatus(request *api.UpdateStatusRequest) error {
-	return s.provider.UpdateTaskStatus(request)
+func (s *DataProviderService) UpdateStatus(request *pb.UpdateStatusRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, s.provider.UpdateTaskStatus(request)
 }

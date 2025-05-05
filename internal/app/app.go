@@ -5,8 +5,7 @@ import (
 	"data-provider-service/internal/cache"
 	"data-provider-service/internal/cache/repository/redis"
 	"data-provider-service/internal/config"
-	"data-provider-service/internal/handler/data_provider_handler"
-	"data-provider-service/internal/http"
+	"data-provider-service/internal/grpc"
 	"data-provider-service/internal/provider"
 	"data-provider-service/internal/provider/repository/postgres"
 	"data-provider-service/internal/service"
@@ -24,8 +23,6 @@ func NewApp() *App {
 }
 
 func (*App) Run(cfg config.Config) error {
-	server := http.NewServer(cfg.HTTPConfig)
-
 	redisRepository, err := redis.NewRepository(cfg.RedisConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create redis: %v", err)
@@ -40,15 +37,16 @@ func (*App) Run(cfg config.Config) error {
 
 	dataProviderService := service.NewDataProviderService(dataCache, dataProvider)
 
-	serviceHandler := data_provider_handler.NewDataProviderHandler(dataProviderService)
-
-	serviceHandler.Register(server.Router)
+	server, err := grpc.NewServer(cfg.GRPCConfig, dataProviderService)
+	if err != nil {
+		return fmt.Errorf("failed to create grpc server: %v", err)
+	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		server.Run()
+		server.Serve()
 	}()
 	defer func() {
 		server.Stop()
