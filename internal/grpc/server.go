@@ -1,15 +1,18 @@
 package grpc
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"data-provider-service/internal/config"
 	"data-provider-service/internal/service"
 	"fmt"
 	pb "github.com/5krotov/task-resolver-pkg/grpc-api/v1"
-	"github.com/5krotov/task-resolver-pkg/utils"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
+	"os"
 )
 
 type Server struct {
@@ -21,7 +24,25 @@ type Server struct {
 func NewServer(cfg config.GRPCConfig, service *service.DataProviderService) (*Server, error) {
 	var server *grpc.Server
 	if cfg.UseTLS {
-		creds, err := utils.LoadTLSServerCreds(cfg.Cert, cfg.Key, cfg.CA)
+		serverCert, err := tls.LoadX509KeyPair(cfg.Cert, cfg.Key)
+		if err != nil {
+			log.Fatalf("Failed to load server cert: %v", err)
+		}
+
+		caCert, err := os.ReadFile(cfg.CA)
+		if err != nil {
+			log.Fatalf("Failed to read CA cert: %v", err)
+		}
+
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM(caCert)
+
+		creds := credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{serverCert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
+		})
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to load server creds: %v", err)
 		}
